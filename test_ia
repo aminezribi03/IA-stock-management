@@ -1,0 +1,59 @@
+from ia_prediction import StockPredictor
+from get_weather import get_weather
+from get_social_trends import get_twitter_mentions, get_instagram_mentions, get_tiktok_mentions
+from score_tendance import score_tendance
+from send_notification import send_admin_email
+import pandas as pd
+
+def get_last_month_stats(csv_path):
+    df = pd.read_csv(csv_path)
+    last_month = sorted(set(df['jour']))[-30:]
+    recent_df = df[df['jour'].isin(last_month)]
+    ventes_total = recent_df['quantite'].sum()
+    top_types = recent_df.groupby('tendance').agg({'quantite': 'sum'}).sort_values('quantite', ascending=False)
+    return ventes_total, top_types.index.tolist()
+
+def advise(prediction, tendance, avis):
+    if tendance > 3 and avis > 4:
+        message = f"Commander {int(prediction)} unités (tendance forte, avis positifs)."
+    elif tendance == 0 or avis < 3:
+        message = f"Éviter ce type (tendance faible/avis faibles)."
+    else:
+        message = f"Commander {int(prediction)} vêtements, prudence (tendance/avis moyens)."
+    return message
+
+def main():
+    jour = 20251114
+    temp = get_weather(city="Paris", api_key="TA_CLE_API")
+    twitter = get_twitter_mentions("#tshirt", "API_KEY", "API_SECRET", "ACCESS_TOKEN", "ACCESS_SECRET")
+    insta = get_instagram_mentions("tshirt")
+    tiktok = get_tiktok_mentions("tshirt")
+    total_mentions = twitter + insta + tiktok
+    tendance = score_tendance(total_mentions)
+    avis = 4.1
+
+    predictor = StockPredictor()
+    prediction = predictor.predict(jour, temp, tendance, avis)
+    conseil = advise(prediction, tendance, avis)
+
+    ventes_total, top_types = get_last_month_stats("exemple_data.csv")
+
+    msg = f"""
+Résultat IA : {prediction:.2f} vêtements à commander
+{conseil}
+
+Vendus le mois dernier : {ventes_total}
+Catégories les plus tendances (score) : {top_types}
+
+-- Automatisé IA stock management.
+"""
+    send_admin_email(
+        subject="Conseil IA commande stock",
+        message=msg,
+        to_email="admin@example.com",
+        from_email="your.email@gmail.com",
+        password="TON_MOT_DE_PASSE"
+    )
+
+if __name__ == "__main__":
+    main()
