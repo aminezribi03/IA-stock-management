@@ -1,0 +1,31 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+import pickle
+
+class StockPredictor:
+    def __init__(self, model_file="model.pkl"):
+        self.model_file = model_file
+        self.model = None
+        self.load_model()
+
+    def load_model(self):
+        try:
+            with open(self.model_file, "rb") as f:
+                self.model = pickle.load(f)
+        except FileNotFoundError:
+            self.model = None
+
+    def train(self, csv_path):
+        df = pd.read_csv(csv_path)
+        X = df[["jour", "temp", "tendance", "avis"]]
+        y = df["quantite"]
+        self.model = RandomForestRegressor().fit(X, y)
+        with open(self.model_file, "wb") as f:
+            pickle.dump(self.model, f)
+
+    def predict(self, jour, temp, tendance, avis):
+        if not self.model:
+            raise Exception("Le modèle n'est pas entraîné. Lance train() avant.")
+        X_new = np.array([[jour, temp, tendance, avis]])
+        return self.model.predict(X_new)[0]
