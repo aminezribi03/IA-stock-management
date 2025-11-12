@@ -1,0 +1,6 @@
+from ia_prediction import StockPredictor
+
+if __name__ == "__main__":
+    predictor = StockPredictor()
+    predictor.train("exemple_data.csv")
+    print("Modèle entraîné et sauvegardé.")
